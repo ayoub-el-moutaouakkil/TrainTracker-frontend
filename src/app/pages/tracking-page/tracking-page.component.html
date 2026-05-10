@@ -16,10 +16,14 @@
   </main>
 
   <!-- ── Panneau ────────────────────────────────────────────────── -->
-  <aside class="panel" [class.panel--open]="panelOpen">
+  <aside #panelEl class="panel" [class.panel--open]="panelOpen"
+         [style.transform]="dragging ? 'translateY(' + clampedDragY + 'px)' : null"
+         [style.transition]="dragging ? 'none' : null"
+         (touchmove)="onTouchMove($event)"
+         (touchend)="onTouchEnd()">
 
     <!-- Handle mobile (drag / tap pour ouvrir/fermer) -->
-    <div class="panel__handle" (click)="panelOpen = !panelOpen">
+    <div class="panel__handle" (click)="onHandleClick()" (touchstart)="onTouchStart($event)">
       <div class="panel__handle-bar"></div>
     </div>
 

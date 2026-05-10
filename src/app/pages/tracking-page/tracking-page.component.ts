@@ -1,5 +1,5 @@
 import {
-  Component, OnDestroy, AfterViewInit, signal
+  Component, OnDestroy, AfterViewInit, signal, ElementRef, ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -28,9 +28,17 @@ const trainIcon = L.divIcon({
 })
 export class TrackingPageComponent implements AfterViewInit, OnDestroy {
 
+  @ViewChild('panelEl') panelRef!: ElementRef<HTMLElement>;
+
   trainNumber = '';
   date = new Date().toISOString().split('T')[0];
   panelOpen   = true;
+
+  dragging              = false;
+  clampedDragY          = 0;
+  private touchStartY          = 0;
+  private touchStartedOnHandle = false;
+  private wasDrag              = false;
 
   journey      = signal<TrackingResponse | null>(null);
   loading      = signal(false);
@@ -95,12 +103,47 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
           this.journey.set(res);
           this.updateMap(res);
           this.startPolling(res.journeyId);
+          this.panelOpen = false;
         },
         error: (err: TrackingError) => {
           this.loading.set(false);
           this.error.set(err.message);
         }
       });
+  }
+
+  onHandleClick(): void {
+    if (!this.wasDrag) this.panelOpen = !this.panelOpen;
+  }
+
+  onTouchStart(e: TouchEvent): void {
+    this.touchStartY          = e.touches[0].clientY;
+    this.touchStartedOnHandle = true;
+    this.wasDrag              = false;
+  }
+
+  onTouchMove(e: TouchEvent): void {
+    if (!this.touchStartedOnHandle) return;
+    const delta = e.touches[0].clientY - this.touchStartY;
+    if (Math.abs(delta) > 5) {
+      this.dragging = true;
+      this.wasDrag  = true;
+      e.preventDefault();
+      const panelH  = this.panelRef.nativeElement.offsetHeight;
+      const closedY = panelH - 64;
+      const baseY   = this.panelOpen ? 0 : closedY;
+      this.clampedDragY = Math.min(closedY, Math.max(0, baseY + delta));
+    }
+  }
+
+  onTouchEnd(): void {
+    this.touchStartedOnHandle = false;
+    if (!this.dragging) return;
+    const panelH  = this.panelRef.nativeElement.offsetHeight;
+    const closedY = panelH - 64;
+    this.panelOpen    = this.clampedDragY < closedY / 2;
+    this.dragging     = false;
+    this.clampedDragY = 0;
   }
 
   stopTracking(): void {
