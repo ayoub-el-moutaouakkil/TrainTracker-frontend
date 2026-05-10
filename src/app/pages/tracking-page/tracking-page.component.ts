@@ -32,7 +32,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
 
   trainNumber = '';
   date = new Date().toISOString().split('T')[0];
-  panelOpen   = true;
+  panelOpen = signal(true);
 
   dragging              = false;
   clampedDragY          = 0;
@@ -103,7 +103,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
           this.journey.set(res);
           this.updateMap(res);
           this.startPolling(res.journeyId);
-          this.panelOpen = false;
+          this.panelOpen.set(false);
         },
         error: (err: TrackingError) => {
           this.loading.set(false);
@@ -113,7 +113,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
   }
 
   onHandleClick(): void {
-    if (!this.wasDrag) this.panelOpen = !this.panelOpen;
+    if (!this.wasDrag) this.panelOpen.set(!this.panelOpen());
   }
 
   onTouchStart(e: TouchEvent): void {
@@ -131,7 +131,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
       e.preventDefault();
       const panelH  = this.panelRef.nativeElement.offsetHeight;
       const closedY = panelH - 64;
-      const baseY   = this.panelOpen ? 0 : closedY;
+      const baseY   = this.panelOpen() ? 0 : closedY;
       this.clampedDragY = Math.min(closedY, Math.max(0, baseY + delta));
     }
   }
@@ -141,7 +141,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
     if (!this.dragging) return;
     const panelH  = this.panelRef.nativeElement.offsetHeight;
     const closedY = panelH - 64;
-    this.panelOpen    = this.clampedDragY < closedY / 2;
+    this.panelOpen.set(this.clampedDragY < closedY / 2);
     this.dragging     = false;
     this.clampedDragY = 0;
   }
@@ -168,17 +168,14 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
     this.clearMap();
     if (!res.allStops?.length) return;
 
-    // Filtrer les arrêts hors des limites géographiques de la France
     const validStops = res.allStops.filter(s =>
       s.latitude  >= 41   && s.latitude  <= 52 &&
       s.longitude >= -6   && s.longitude <= 10.5
     );
     if (validStops.length < 2) return;
 
-    // Points de la route dans l'ordre exact des gares
     const routePoints = validStops.map(s => L.latLng(s.latitude, s.longitude));
 
-    // ── Position du train sur la route ────────────────────────────────────
     let trainPos: L.LatLng | null = null;
     let splitSegIdx = 0;
 
@@ -191,18 +188,14 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
       trainPos     = point;
       splitSegIdx  = segmentIndex;
     } else {
-      // Pas de position temps réel : split au dernier arrêt departed
       splitSegIdx = Math.max(0,
         res.allStops.reduce((last, s, i) => s.departed ? i : last, 0)
       );
     }
 
-    // ── Tracé de la route ─────────────────────────────────────────────────
-    // Portion passée (gris) : du départ au train
     const greyPts = [...routePoints.slice(0, splitSegIdx + 1)];
     if (trainPos) greyPts.push(trainPos);
 
-    // Portion restante (bleu) : du train à l'arrivée
     const bluePts: L.LatLng[] = [];
     if (trainPos) bluePts.push(trainPos);
     bluePts.push(...routePoints.slice(splitSegIdx + 1));
@@ -218,7 +211,6 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
       );
     }
 
-    // ── Marqueurs de gares ────────────────────────────────────────────────
     validStops.forEach((stop, i) => {
       const isFirst = i === 0;
       const isLast  = i === validStops.length - 1;
@@ -237,7 +229,6 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
         .addTo(this.stopMarkers);
     });
 
-    // ── Marqueur train exactement sur la route ────────────────────────────
     if (trainPos) {
       this.trainMarker = L.marker(trainPos, { icon: trainIcon, zIndexOffset: 1000 })
         .bindPopup(`<b>Train ${res.trainNumber}</b><br>${this.delayLabel}`)
@@ -267,7 +258,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
     this.pollSub = interval(30_000)
       .pipe(
         switchMap(() => this.trackingService.getTracking(journeyId).pipe(
-          catchError(() => EMPTY)  // erreur silencieuse : on réessaie au prochain tick
+          catchError(() => EMPTY)
         ))
       )
       .subscribe(res => {

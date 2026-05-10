@@ -16,7 +16,7 @@
   </main>
 
   <!-- ── Panneau ────────────────────────────────────────────────── -->
-  <aside #panelEl class="panel" [class.panel--open]="panelOpen"
+  <aside #panelEl class="panel" [class.panel--open]="panelOpen()"
          [style.transform]="dragging ? 'translateY(' + clampedDragY + 'px)' : null"
          [style.transition]="dragging ? 'none' : null"
          (touchmove)="onTouchMove($event)"
@@ -29,6 +29,7 @@
 
     <header class="panel__header">
       <span class="logo">🚄 TrainTracker</span>
+      <span class="logo-sub">Trains grandes lignes SNCF uniquement</span>
     </header>
 
     <div class="panel__body">
@@ -95,7 +96,7 @@
             }
           </div>
 
-          <p class="last-updated">Mis à jour : {{ formatTime(j.lastUpdated) }}</p>
+          <p class="last-updated">Mis à jour : {{ formatTime(j.lastUpdated) }} <span class="tz">(heure Paris)</span></p>
         </section>
 
         <!-- Liste des arrêts -->
