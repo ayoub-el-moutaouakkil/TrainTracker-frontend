@@ -21,6 +21,7 @@ export interface StopInfo {
 
 export interface TrackingResponse {
   journeyId: string;
+  deleteToken?: string;
   trainNumber: string;
   date: string;
   status: TrackingStatus;

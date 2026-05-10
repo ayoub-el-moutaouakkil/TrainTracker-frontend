@@ -43,6 +43,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
   journey      = signal<TrackingResponse | null>(null);
   loading      = signal(false);
   error        = signal<string | null>(null);
+  private deleteToken: string | null = null;
 
   private map!: L.Map;
   private trainMarker: L.Marker | null = null;
@@ -100,6 +101,7 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
       .subscribe({
         next: res => {
           this.loading.set(false);
+          this.deleteToken = res.deleteToken ?? null;
           this.journey.set(res);
           this.updateMap(res);
           this.startPolling(res.journeyId);
@@ -148,9 +150,10 @@ export class TrackingPageComponent implements AfterViewInit, OnDestroy {
 
   stopTracking(): void {
     const id = this.j?.journeyId;
-    if (!id) return;
+    if (!id || !this.deleteToken) return;
     this.pollSub?.unsubscribe();
-    this.trackingService.stopTracking(id).subscribe();
+    this.trackingService.stopTracking(id, this.deleteToken).subscribe();
+    this.deleteToken = null;
     this.journey.set(null);
     this.clearMap();
   }

@@ -28,9 +28,10 @@ export class TrainTrackingService {
       .pipe(catchError(this.handleError));
   }
 
-  stopTracking(journeyId: string): Observable<void> {
-    return this.http.delete<void>(`${this.api}/${journeyId}`)
-      .pipe(catchError(this.handleError));
+  stopTracking(journeyId: string, deleteToken: string): Observable<void> {
+    return this.http.delete<void>(`${this.api}/${journeyId}`, {
+      headers: { 'X-Delete-Token': deleteToken }
+    }).pipe(catchError(this.handleError));
   }
 
   private handleError(err: HttpErrorResponse): Observable<never> {
