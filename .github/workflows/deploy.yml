@@ -29,7 +29,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build -- --base-href /TrainTracker-frontend/
+      - run: npm run build -- --base-href /
 
       - uses: actions/configure-pages@v4
 
